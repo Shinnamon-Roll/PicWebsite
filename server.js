@@ -71,34 +71,7 @@ app.post("/upload-multiple", upload.array("imageFiles", 10), (req, res) => {
     if (!req.files) {
         return res.status(400).json({ message: "No files uploaded" });
     }
-
-    // Update image order
-    const newImages = req.files.map(file => `/images/${path.basename(file.path)}`);
-
-    // Read the current image order
-    fs.readFile(orderFilePath, (err, data) => {
-        if (err) {
-            return res.status(500).json({ message: "Failed to read image order" });
-        }
-
-        let currentOrder;
-        try {
-            currentOrder = JSON.parse(data);
-        } catch (e) {
-            currentOrder = [];
-        }
-
-        // Update the order with new images
-        const updatedOrder = [...currentOrder, ...newImages];
-
-        // Write the updated order to imageOrder.json
-        fs.writeFile(orderFilePath, JSON.stringify(updatedOrder), (err) => {
-            if (err) {
-                return res.status(500).json({ message: "Failed to update image order" });
-            }
-            res.json({ message: `${req.files.length} image(s) uploaded and order updated successfully!` });
-        });
-    });
+    res.json({ message: `${req.files.length} image(s) uploaded successfully!` });
 });
 
 // Endpoint to delete an image
@@ -110,31 +83,7 @@ app.post("/delete-image", (req, res) => {
         if (err) {
             return res.status(500).json({ success: false, message: "Failed to delete image" });
         }
-
-        // Update image order
-        fs.readFile(orderFilePath, (err, data) => {
-            if (err) {
-                return res.status(500).json({ message: "Failed to read image order" });
-            }
-
-            let currentOrder;
-            try {
-                currentOrder = JSON.parse(data);
-            } catch (e) {
-                currentOrder = [];
-            }
-
-            // Remove deleted image from the order
-            const updatedOrder = currentOrder.filter(img => img !== imagePath);
-
-            // Write the updated order to imageOrder.json
-            fs.writeFile(orderFilePath, JSON.stringify(updatedOrder), (err) => {
-                if (err) {
-                    return res.status(500).json({ message: "Failed to update image order" });
-                }
-                res.json({ success: true });
-            });
-        });
+        res.json({ success: true });
     });
 });
 
