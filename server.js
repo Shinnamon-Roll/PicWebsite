@@ -6,17 +6,15 @@ const path = require("path");
 const app = express();
 const PORT = 3000;
 
-// Middleware to handle JSON and URL-encoded data
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Serve static files (frontend)
-app.use(express.static("public"));
-
-// Ensure image directory and order file exist
+// Directories and file paths
 const imagesDir = path.join(__dirname, "images");
 const orderFilePath = path.join(__dirname, "imageOrder.json");
 
+// Middleware
+app.use(express.json());
+app.use(express.static("public"));
+
+// Ensure directories and files exist
 function ensureFiles() {
     if (!fs.existsSync(imagesDir)) {
         fs.mkdirSync(imagesDir);
@@ -26,28 +24,25 @@ function ensureFiles() {
     }
 }
 
-ensureFiles();
-
-// Endpoint to get images in saved order
+// Endpoint to get images
 app.get("/images", (req, res) => {
+    ensureFiles();
     fs.readFile(orderFilePath, (err, data) => {
         if (err) {
             return res.status(500).json({ error: "Failed to load image order" });
         }
-
         try {
             const orderedImages = JSON.parse(data);
-            res.json(orderedImages.map(img => `/images/${path.basename(img)}`)); // Serve images with proper URL
+            res.json(orderedImages);
         } catch (e) {
-            res.json([]);
+            res.status(500).json({ error: "Failed to parse image order" });
         }
     });
 });
 
-// Endpoint to save the new image order
+// Endpoint to save image order
 app.post("/save-order", (req, res) => {
     const newOrder = req.body.order;
-
     fs.writeFile(orderFilePath, JSON.stringify(newOrder), (err) => {
         if (err) {
             return res.json({ success: false, message: "Failed to save image order" });
@@ -56,7 +51,7 @@ app.post("/save-order", (req, res) => {
     });
 });
 
-// Endpoint for multiple image uploads
+// Configure multer for image uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, imagesDir);
@@ -67,33 +62,14 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// Endpoint to handle multiple image uploads
 app.post("/upload-multiple", upload.array("imageFiles", 10), (req, res) => {
-    if (!req.files) {
-        return res.status(400).json({ message: "No files uploaded" });
-    }
-    res.json({ message: `${req.files.length} image(s) uploaded successfully!` });
-});
-
-// Endpoint to delete an image
-app.post("/delete-image", (req, res) => {
-    const imagePath = req.body.path;
-    const filePath = path.join(imagesDir, path.basename(imagePath));
-
-    fs.unlink(filePath, (err) => {
-        if (err) {
-            return res.status(500).json({ success: false, message: "Failed to delete image" });
-        }
-        res.json({ success: true });
-    });
-});
-
-app.post("/upload-multiple", upload.array("imageFiles", 10), (req, res) => {
-    if (!req.files) {
+    if (!req.files || req.files.length === 0) {
         return res.status(400).json({ message: "No files uploaded" });
     }
 
     const newImages = req.files.map(file => `/images/${path.basename(file.path)}`);
-
+    
     fs.readFile(orderFilePath, (err, data) => {
         if (err) {
             return res.status(500).json({ message: "Failed to read image order" });
@@ -113,7 +89,6 @@ app.post("/upload-multiple", upload.array("imageFiles", 10), (req, res) => {
         });
     });
 });
-
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
