@@ -6,17 +6,24 @@
     <title>Admin Page</title>
 </head>
 <body>
-    <h1>Upload Image</h1>
+    <h1>Manage Images</h1>
     <h1><a href="index.html">Home page</a></h1>
+
+    <!-- Upload Form -->
     <form id="uploadForm" enctype="multipart/form-data">
         <input type="file" id="imageFile" name="imageFile" accept="image/*">
         <button type="submit">Upload</button>
     </form>
 
-    <script>
-        const form = document.getElementById("uploadForm");
+    <!-- Image List -->
+    <h2>Current Images</h2>
+    <div id="imageList"></div>
 
-        form.addEventListener("submit", (e) => {
+    <script>
+        const uploadForm = document.getElementById("uploadForm");
+
+        // Handle image upload
+        uploadForm.addEventListener("submit", (e) => {
             e.preventDefault();
             const fileInput = document.getElementById("imageFile");
             const formData = new FormData();
@@ -29,11 +36,75 @@
             .then(response => response.json())
             .then(data => {
                 alert("Image uploaded successfully!");
+                loadImages();  // Reload images after uploading
             })
             .catch(error => {
                 console.error("Error uploading image:", error);
             });
         });
+
+        // Fetch and display the images
+        function loadImages() {
+            fetch("/images")
+                .then(response => response.json())
+                .then(data => {
+                    const imageList = document.getElementById("imageList");
+                    imageList.innerHTML = "";  // Clear the list first
+
+                    data.forEach(imgPath => {
+                        const imgElement = document.createElement("img");
+                        imgElement.src = imgPath;
+                        imgElement.style.width = "100px";
+                        imgElement.style.height = "100px";
+
+                        const deleteBtn = document.createElement("button");
+                        deleteBtn.textContent = "Delete";
+                        deleteBtn.addEventListener("click", () => deleteImage(imgPath));
+
+                        const imageWrapper = document.createElement("div");
+                        imageWrapper.appendChild(imgElement);
+                        imageWrapper.appendChild(deleteBtn);
+
+                        imageList.appendChild(imageWrapper);
+                    });
+                });
+        }
+
+        // Handle image deletion
+        function deleteImage(imagePath) {
+            fetch("/delete", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ path: imagePath })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Image deleted successfully!");
+                    loadImages();  // Reload the images after deletion
+                } else {
+                    alert("Failed to delete image");
+                }
+            })
+            .catch(error => {
+                console.error("Error deleting image:", error);
+            });
+        }
+
+        // Load images when page loads
+        window.onload = loadImages;
+    </script>
+
+    <script>
+        // Check if the user is logged in
+        const isLoggedIn = sessionStorage.getItem("isLoggedIn");
+
+        if (!isLoggedIn) {
+            // Redirect to login page if not logged in
+            window.location.href = "/login.html";
+        }
     </script>
 </body>
 </html>
