@@ -3,15 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Picture Gallery</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Home - Image Gallery</title>
+    <style>
+        .image-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .image-container img {
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+        }
+    </style>
 </head>
 <body>
-    <h1>Picture Gallery</h1>
-    <h1><a href="admin.html">Admin page</a></h1>
-    <div id="gallery"></div>
+    <h1>Image Gallery</h1>
+    <a href="admin.html">Go to Admin Panel</a>
+    <div id="gallery" class="image-container"></div>
 
-
-    <script src="scripts.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            fetch("/images")
+                .then(response => response.json())
+                .then(data => {
+                    const gallery = document.getElementById("gallery");
+                    data.forEach(imgPath => {
+                        const imgElement = document.createElement("img");
+                        imgElement.src = imgPath;
+                        gallery.appendChild(imgElement);
+                    });
+                });
+        });
+    </script>
 </body>
 </html>

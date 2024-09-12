@@ -19,22 +19,25 @@
             height: 100px;
             object-fit: cover;
         }
-        .image-wrapper.dragging {
-            opacity: 0.5;
-        }
         .upload-form {
             margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
+    <script>
+        if (localStorage.getItem("loggedIn") !== "true") {
+            window.location.href = "login.html";
+        }
+    </script>
+
     <h1>Manage Images</h1>
-    <h1><a href="index.html">Home page</a></h1>
+    <button id="logoutBtn">Logout</button>
 
     <!-- Image Upload Form -->
     <div class="upload-form">
         <form id="uploadForm" enctype="multipart/form-data">
-            <input type="file" name="imageFiles" id="imageFiles" accept="image/*" multiple> <!-- Allow multiple files -->
+            <input type="file" name="imageFiles" id="imageFiles" accept="image/*" multiple>
             <button type="submit">Upload Images</button>
         </form>
         <p id="uploadStatus"></p>
@@ -45,6 +48,11 @@
     <button id="saveOrderBtn">Save Order</button>
 
     <script>
+        document.getElementById("logoutBtn").addEventListener("click", function() {
+            localStorage.removeItem("loggedIn");
+            window.location.href = "login.html";
+        });
+
         let draggedItem = null;
         const imageContainer = document.getElementById("imageContainer");
 
@@ -53,12 +61,12 @@
             fetch("/images")
                 .then(response => response.json())
                 .then(data => {
-                    imageContainer.innerHTML = ""; // Clear existing images
+                    imageContainer.innerHTML = "";
                     data.forEach((imgPath, index) => {
                         const imgElement = document.createElement("img");
                         imgElement.src = imgPath;
-                        imgElement.draggable = true;  // Make images draggable
-                        imgElement.dataset.index = index;  // Store image index
+                        imgElement.draggable = true;
+                        imgElement.dataset.index = index;
 
                         const wrapper = document.createElement("div");
                         wrapper.className = "image-wrapper";
@@ -105,7 +113,6 @@
             // Handle drop if needed
         }
 
-        // Save the new order of images
         document.getElementById("saveOrderBtn").addEventListener("click", () => {
             const newOrder = Array.from(imageContainer.children).map(wrapper => {
                 const imgElement = wrapper.querySelector("img");
@@ -129,31 +136,36 @@
             });
         });
 
-        // Handle Image Upload (Multiple Images)
         document.getElementById("uploadForm").addEventListener("submit", function (e) {
             e.preventDefault();
-            const formData = new FormData();
-            const imageFiles = document.getElementById("imageFiles").files; // Get all selected files
 
-            for (let i = 0; i < imageFiles.length; i++) {
-                formData.append("imageFiles", imageFiles[i]); // Append each file to the form data
+            const formData = new FormData();
+            const imageFiles = document.getElementById("imageFiles").files;
+
+            if (imageFiles.length === 0) {
+                document.getElementById("uploadStatus").textContent = "No files selected.";
+                return;
             }
 
-            fetch("/upload-multiple", { // Change to new route for multiple uploads
+            for (let i = 0; i < imageFiles.length; i++) {
+                formData.append("imageFiles", imageFiles[i]);
+            }
+
+            fetch("/upload-multiple", {
                 method: "POST",
                 body: formData
             })
             .then(response => response.json())
             .then(data => {
                 document.getElementById("uploadStatus").textContent = data.message;
-                loadImages();  // Reload images after successful upload
+                loadImages(); // Reload images after successful upload
             })
             .catch(err => {
-                document.getElementById("uploadStatus").textContent = "Error uploading images";
+                console.error("Error uploading images:", err);
+                document.getElementById("uploadStatus").textContent = "Error uploading images.";
             });
         });
 
-        // Load images when the page loads
         window.onload = loadImages;
     </script>
 </body>

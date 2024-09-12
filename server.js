@@ -15,6 +15,7 @@ app.use(express.static("public"));
 // Store image order in a JSON file
 const orderFilePath = path.join(__dirname, "imageOrder.json");
 
+// Ensure the image order file exists
 function ensureImageOrderFile() {
     if (!fs.existsSync(orderFilePath)) {
         fs.writeFileSync(orderFilePath, JSON.stringify([]));
@@ -23,7 +24,7 @@ function ensureImageOrderFile() {
 
 // Endpoint to get images in saved order
 app.get("/images", (req, res) => {
-    ensureImageOrderFile();  // Ensure the file is there
+    ensureImageOrderFile();
 
     fs.readFile(orderFilePath, (err, data) => {
         if (err) {
@@ -31,10 +32,9 @@ app.get("/images", (req, res) => {
         }
 
         try {
-            const orderedImages = JSON.parse(data);  // Parse JSON safely
+            const orderedImages = JSON.parse(data);
             res.json(orderedImages);
         } catch (e) {
-            // If there's an error parsing JSON, send an empty array
             res.json([]);
         }
     });
@@ -52,7 +52,7 @@ app.post("/save-order", (req, res) => {
     });
 });
 
-// Endpoint for multiple image uploads
+// Setup multer for image uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const dir = path.join(__dirname, "images");
@@ -67,8 +67,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Updated route to handle multiple image uploads
-app.post("/upload-multiple", upload.array("imageFiles", 10), (req, res) => { // Accept up to 10 images at once
+// Endpoint for multiple image uploads
+app.post("/upload-multiple", upload.array("imageFiles", 10), (req, res) => {
     if (!req.files) {
         return res.status(400).json({ message: "No files uploaded" });
     }
