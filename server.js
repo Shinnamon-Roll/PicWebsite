@@ -15,14 +15,28 @@ app.use(express.static("public"));
 // Store image order in a JSON file
 const orderFilePath = path.join(__dirname, "imageOrder.json");
 
+function ensureImageOrderFile() {
+    if (!fs.existsSync(orderFilePath)) {
+        fs.writeFileSync(orderFilePath, JSON.stringify([]));
+    }
+}
+
 // Endpoint to get images in saved order
 app.get("/images", (req, res) => {
+    ensureImageOrderFile();  // Ensure the file is there
+
     fs.readFile(orderFilePath, (err, data) => {
         if (err) {
             return res.status(500).json({ error: "Failed to load image order" });
         }
-        const orderedImages = JSON.parse(data);
-        res.json(orderedImages);
+
+        try {
+            const orderedImages = JSON.parse(data);  // Parse JSON safely
+            res.json(orderedImages);
+        } catch (e) {
+            // If there's an error parsing JSON, send an empty array
+            res.json([]);
+        }
     });
 });
 
@@ -30,7 +44,6 @@ app.get("/images", (req, res) => {
 app.post("/save-order", (req, res) => {
     const newOrder = req.body.order;
 
-    // Save new order in imageOrder.json
     fs.writeFile(orderFilePath, JSON.stringify(newOrder), (err) => {
         if (err) {
             return res.json({ success: false, message: "Failed to save image order" });
@@ -39,7 +52,7 @@ app.post("/save-order", (req, res) => {
     });
 });
 
-// Endpoint for image uploads (same as before)
+// Endpoint for multiple image uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const dir = path.join(__dirname, "images");
@@ -54,8 +67,12 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-app.post("/upload", upload.single("imageFile"), (req, res) => {
-    res.json({ message: "Image uploaded successfully!" });
+// Updated route to handle multiple image uploads
+app.post("/upload-multiple", upload.array("imageFiles", 10), (req, res) => { // Accept up to 10 images at once
+    if (!req.files) {
+        return res.status(400).json({ message: "No files uploaded" });
+    }
+    res.json({ message: `${req.files.length} image(s) uploaded successfully!` });
 });
 
 app.listen(PORT, () => {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Page - Image Sorting</title>
+    <title>Admin Page - Manage Images</title>
     <style>
         .image-container {
             display: flex;
@@ -22,11 +22,25 @@
         .image-wrapper.dragging {
             opacity: 0.5;
         }
+        .upload-form {
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
     <h1>Manage Images</h1>
+    <h1><a href="index.html">Home page</a></h1>
 
+    <!-- Image Upload Form -->
+    <div class="upload-form">
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" name="imageFiles" id="imageFiles" accept="image/*" multiple> <!-- Allow multiple files -->
+            <button type="submit">Upload Images</button>
+        </form>
+        <p id="uploadStatus"></p>
+    </div>
+
+    <!-- Image Sorting Section -->
     <div id="imageContainer" class="image-container"></div>
     <button id="saveOrderBtn">Save Order</button>
 
@@ -39,7 +53,7 @@
             fetch("/images")
                 .then(response => response.json())
                 .then(data => {
-                    imageContainer.innerHTML = "";
+                    imageContainer.innerHTML = ""; // Clear existing images
                     data.forEach((imgPath, index) => {
                         const imgElement = document.createElement("img");
                         imgElement.src = imgPath;
@@ -88,7 +102,7 @@
         }
 
         function drop() {
-            // Handle the drop
+            // Handle drop if needed
         }
 
         // Save the new order of images
@@ -112,6 +126,30 @@
                 } else {
                     alert("Failed to save image order.");
                 }
+            });
+        });
+
+        // Handle Image Upload (Multiple Images)
+        document.getElementById("uploadForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            const formData = new FormData();
+            const imageFiles = document.getElementById("imageFiles").files; // Get all selected files
+
+            for (let i = 0; i < imageFiles.length; i++) {
+                formData.append("imageFiles", imageFiles[i]); // Append each file to the form data
+            }
+
+            fetch("/upload-multiple", { // Change to new route for multiple uploads
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("uploadStatus").textContent = data.message;
+                loadImages();  // Reload images after successful upload
+            })
+            .catch(err => {
+                document.getElementById("uploadStatus").textContent = "Error uploading images";
             });
         });
 
