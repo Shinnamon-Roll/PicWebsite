@@ -6,26 +6,30 @@ const path = require("path");
 const app = express();
 const PORT = 3000;
 
-// Middleware to handle JSON
+// Middleware to handle JSON and URL-encoded data
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Serve static files (frontend)
 app.use(express.static("public"));
 
-// Store image order in a JSON file
+// Ensure image directory and order file exist
+const imagesDir = path.join(__dirname, "images");
 const orderFilePath = path.join(__dirname, "imageOrder.json");
 
-// Ensure the image order file exists
-function ensureImageOrderFile() {
+function ensureFiles() {
+    if (!fs.existsSync(imagesDir)) {
+        fs.mkdirSync(imagesDir);
+    }
     if (!fs.existsSync(orderFilePath)) {
         fs.writeFileSync(orderFilePath, JSON.stringify([]));
     }
 }
 
+ensureFiles();
+
 // Endpoint to get images in saved order
 app.get("/images", (req, res) => {
-    ensureImageOrderFile();
-
     fs.readFile(orderFilePath, (err, data) => {
         if (err) {
             return res.status(500).json({ error: "Failed to load image order" });
@@ -33,7 +37,7 @@ app.get("/images", (req, res) => {
 
         try {
             const orderedImages = JSON.parse(data);
-            res.json(orderedImages);
+            res.json(orderedImages.map(img => `/images/${path.basename(img)}`)); // Serve images with proper URL
         } catch (e) {
             res.json([]);
         }
@@ -52,14 +56,10 @@ app.post("/save-order", (req, res) => {
     });
 });
 
-// Setup multer for image uploads
+// Endpoint for multiple image uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const dir = path.join(__dirname, "images");
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir);
-        }
-        cb(null, "images");
+        cb(null, imagesDir);
     },
     filename: (req, file, cb) => {
         cb(null, Date.now() + path.extname(file.originalname));
@@ -67,12 +67,24 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Endpoint for multiple image uploads
 app.post("/upload-multiple", upload.array("imageFiles", 10), (req, res) => {
     if (!req.files) {
         return res.status(400).json({ message: "No files uploaded" });
     }
     res.json({ message: `${req.files.length} image(s) uploaded successfully!` });
+});
+
+// Endpoint to delete an image
+app.post("/delete-image", (req, res) => {
+    const imagePath = req.body.path;
+    const filePath = path.join(imagesDir, path.basename(imagePath));
+
+    fs.unlink(filePath, (err) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: "Failed to delete image" });
+        }
+        res.json({ success: true });
+    });
 });
 
 app.listen(PORT, () => {

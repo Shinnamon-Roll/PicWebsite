@@ -22,17 +22,14 @@
         .upload-form {
             margin-bottom: 20px;
         }
+        .dragging {
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
-    <script>
-        if (localStorage.getItem("loggedIn") !== "true") {
-            window.location.href = "login.html";
-        }
-    </script>
-
     <h1>Manage Images</h1>
-    <button id="logoutBtn">Logout</button>
+    <a href="index.html">Home Page</a>
 
     <!-- Image Upload Form -->
     <div class="upload-form">
@@ -43,20 +40,14 @@
         <p id="uploadStatus"></p>
     </div>
 
-    <!-- Image Sorting Section -->
+    <!-- Image Sorting and Deletion Section -->
     <div id="imageContainer" class="image-container"></div>
     <button id="saveOrderBtn">Save Order</button>
 
     <script>
-        document.getElementById("logoutBtn").addEventListener("click", function() {
-            localStorage.removeItem("loggedIn");
-            window.location.href = "login.html";
-        });
-
         let draggedItem = null;
         const imageContainer = document.getElementById("imageContainer");
 
-        // Fetch and display the images
         function loadImages() {
             fetch("/images")
                 .then(response => response.json())
@@ -68,9 +59,14 @@
                         imgElement.draggable = true;
                         imgElement.dataset.index = index;
 
+                        const deleteButton = document.createElement("button");
+                        deleteButton.textContent = "Delete";
+                        deleteButton.addEventListener("click", () => deleteImage(imgPath));
+
                         const wrapper = document.createElement("div");
                         wrapper.className = "image-wrapper";
                         wrapper.appendChild(imgElement);
+                        wrapper.appendChild(deleteButton);
 
                         wrapper.addEventListener("dragstart", dragStart);
                         wrapper.addEventListener("dragover", dragOver);
@@ -79,14 +75,13 @@
 
                         imageContainer.appendChild(wrapper);
                     });
-                });
+                })
+                .catch(error => console.error('Error loading images:', error));
         }
 
         function dragStart(e) {
             draggedItem = this;
-            setTimeout(() => {
-                this.classList.add("dragging");
-            }, 0);
+            setTimeout(() => this.classList.add("dragging"), 0);
         }
 
         function dragEnd() {
@@ -109,8 +104,28 @@
             }
         }
 
-        function drop() {
-            // Handle drop if needed
+        function drop(e) {
+            e.preventDefault();
+        }
+
+        function deleteImage(imgPath) {
+            fetch("/delete-image", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ path: imgPath })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Image deleted successfully!");
+                    loadImages();
+                } else {
+                    alert("Failed to delete image.");
+                }
+            })
+            .catch(error => console.error('Error deleting image:', error));
         }
 
         document.getElementById("saveOrderBtn").addEventListener("click", () => {
@@ -133,19 +148,14 @@
                 } else {
                     alert("Failed to save image order.");
                 }
-            });
+            })
+            .catch(error => console.error('Error saving image order:', error));
         });
 
-        document.getElementById("uploadForm").addEventListener("submit", function (e) {
+        document.getElementById("uploadForm").addEventListener("submit", function(e) {
             e.preventDefault();
-
             const formData = new FormData();
             const imageFiles = document.getElementById("imageFiles").files;
-
-            if (imageFiles.length === 0) {
-                document.getElementById("uploadStatus").textContent = "No files selected.";
-                return;
-            }
 
             for (let i = 0; i < imageFiles.length; i++) {
                 formData.append("imageFiles", imageFiles[i]);
@@ -158,11 +168,11 @@
             .then(response => response.json())
             .then(data => {
                 document.getElementById("uploadStatus").textContent = data.message;
-                loadImages(); // Reload images after successful upload
+                loadImages();
             })
-            .catch(err => {
-                console.error("Error uploading images:", err);
-                document.getElementById("uploadStatus").textContent = "Error uploading images.";
+            .catch(error => {
+                document.getElementById("uploadStatus").textContent = "Error uploading images";
+                console.error('Error uploading images:', error);
             });
         });
 
