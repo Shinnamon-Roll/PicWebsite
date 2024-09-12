@@ -87,6 +87,34 @@ app.post("/delete-image", (req, res) => {
     });
 });
 
+app.post("/upload-multiple", upload.array("imageFiles", 10), (req, res) => {
+    if (!req.files) {
+        return res.status(400).json({ message: "No files uploaded" });
+    }
+
+    const newImages = req.files.map(file => `/images/${path.basename(file.path)}`);
+
+    fs.readFile(orderFilePath, (err, data) => {
+        if (err) {
+            return res.status(500).json({ message: "Failed to read image order" });
+        }
+        let currentOrder;
+        try {
+            currentOrder = JSON.parse(data);
+        } catch (e) {
+            currentOrder = [];
+        }
+        const updatedOrder = [...currentOrder, ...newImages];
+        fs.writeFile(orderFilePath, JSON.stringify(updatedOrder), (err) => {
+            if (err) {
+                return res.status(500).json({ message: "Failed to update image order" });
+            }
+            res.json({ message: `${req.files.length} image(s) uploaded and saved successfully!` });
+        });
+    });
+});
+
+
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
